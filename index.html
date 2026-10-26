@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ShelfSpot – QR-Scanner</title>
+  <style>
+    :root { color-scheme: dark; font-family: system-ui, Arial, sans-serif; }
+    body { margin: 0; background: #101820; color: white; text-align: center; }
+    main { max-width: 520px; margin: auto; padding: 28px 16px; }
+    h1 { color: #59c6e9; margin-bottom: 4px; }
+    p { color: #d1dce2; }
+    #reader { margin: 24px auto; overflow: hidden; border-radius: 12px; background: #202c34; }
+    button { padding: 13px 20px; background: #249bc5; color: white; border: 0; border-radius: 9px; font-size: 16px; cursor: pointer; }
+    #status { min-height: 48px; margin-top: 16px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>ShelfSpot</h1>
+    <p>QR-Code am Lagerplatz scannen</p>
+    <div id="reader"></div>
+    <button id="start">Kamera starten</button>
+    <p id="status" role="status" aria-live="polite">Bereit zum Scannen</p>
+  </main>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script>
+    const statusEl = document.getElementById('status');
+    const button = document.getElementById('start');
+    let scanner;
+    let finished = false;
+    const prefix = 'https://shelfspot.glide.page/dl/3663a8/';
+
+    function handleScan(decodedText) {
+      if (finished) return;
+      let url;
+      try { url = new URL(decodedText); } catch { statusEl.textContent = 'Kein gültiger ShelfSpot-Link.'; return; }
+      if (url.origin !== 'https://shelfspot.glide.page' || !url.href.startsWith(prefix) || url.username || url.password) {
+        statusEl.textContent = 'Dieser QR-Code gehört nicht zu ShelfSpot.';
+        return;
+      }
+      finished = true;
+      statusEl.textContent = 'Stellplatz erkannt – wird geöffnet …';
+      if (scanner) scanner.stop().catch(() => {});
+      window.location.assign(url.href);
+    }
+
+    button.addEventListener('click', async () => {
+      if (typeof Html5Qrcode === 'undefined') {
+        statusEl.textContent = 'Scanner-Bibliothek konnte nicht geladen werden. Bitte Internetverbindung prüfen.';
+        return;
+      }
+      button.disabled = true;
+      statusEl.textContent = 'Kamera wird geöffnet …';
+      scanner = new Html5Qrcode('reader');
+      try {
+        await scanner.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 240, height: 240 } }, handleScan, () => {});
+        statusEl.textContent = 'QR-Code vor die Kamera halten.';
+        button.style.display = 'none';
+      } catch (error) {
+        statusEl.textContent = 'Kamera konnte nicht gestartet werden. Bitte Kameraberechtigung prüfen.';
+        button.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
